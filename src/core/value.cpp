@@ -128,4 +128,29 @@ VertexRef Value::Vertex() const {
         LOG(FATAL) << "Parameter value does not have corresponding vertex.";
 }
 
+Value Value::CreateInput(const std::string &name, int size) {
+    Value value;
+    value.kind = ValueKind::INPUT;
+    value.name = name;
+
+    // simplify the shape to (size,)
+    std::vector<int64_t> shape;
+    shape.push_back(size); 
+    value.type = TensorType{shape, DataType::INT8};
+    return value;
+}
+
+Value Value::CreateResult(const std::string &name, int size) {
+    Value value;
+    value.kind = ValueKind::RESULT;
+    value.name = name;
+
+    // simplify the shape to (size,)
+    std::vector<int64_t> shape;
+    shape.push_back(size); 
+    value.type = TensorType{shape, DataType::INT8};
+    return value;
+}
+
+
 }  // namespace hmcos

@@ -10,8 +10,9 @@ if(MSVC)
     add_compile_options(/wd4251)
 endif(MSVC)
 
-find_package(Protobuf REQUIRED)
+find_package(Protobuf 3.11 REQUIRED)
 find_package(ONNX 1.9 REQUIRED)
+# find_package(ONNX REQUIRED)
 find_package(glog REQUIRED)
 find_package(fmt REQUIRED)
 
@@ -31,3 +32,6 @@ target_link_libraries(model_info hmcos)
 
 add_executable(op_sched src/bin/op_sched.cpp)
 target_link_libraries(op_sched hmcos)
+
+add_executable(mydag_sched src/bin/op_sched_mydag.cpp)
+target_link_libraries(mydag_sched hmcos)

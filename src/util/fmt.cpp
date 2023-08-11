@@ -56,7 +56,9 @@ static std::unordered_map<AttributeProto::AttributeType,
 std::string FmtAttrValue(const AttributeProto &attr) {
     auto type = attr.type();
     if (!Contains(attrFmtFuncMap, type)) {
-        LOG(ERROR) << fmt::format("Cannot format attribute type {}.", type);
+        // LOG(ERROR) << fmt::format("Cannot format attribute type {}.", type);
+        LOG(ERROR) << fmt::format("Cannot format attribute type.");
+
         return "";
     } else
         return attrFmtFuncMap[type](attr);

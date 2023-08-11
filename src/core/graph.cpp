@@ -3,6 +3,8 @@
 #include <hmcos/util/viz.hpp>
 #include <unordered_map>
 
+#include <nlohmann/json.hpp>
+
 namespace hmcos {
 
 Graph::Graph(const onnx::ModelProto &model, const std::string &name) {
@@ -19,12 +21,14 @@ Graph::Graph(const onnx::ModelProto &model, const std::string &name) {
         val->input = in;
         inputs.push_back(in);
         nameToVal.insert({info.name(), val});
+        LOG(INFO) << "graph input: " << info.name() << " " << info.type().tensor_type().elem_type();
     }
     // Outputs
     for (auto &info : graph.output()) {
         auto val = std::make_shared<Value>(Value::CreateResult(info));
         outputs.push_back(std::make_shared<Output>(val));
         nameToVal.insert({info.name(), val});
+        LOG(INFO) << "graph output: " << info.name() << " " << info.type().tensor_type().elem_type();
     }
     // Parameters
     for (auto &tensor : graph.initializer()) {
@@ -36,11 +40,13 @@ Graph::Graph(const onnx::ModelProto &model, const std::string &name) {
     for (auto &info : graph.value_info()) {
         auto val = std::make_shared<Value>(Value::CreateResult(info));
         nameToVal.insert({info.name(), val});
+        LOG(INFO) << "graph intermediates: " << info.name() << " " << info.type().tensor_type().elem_type();
     }
 
     // Build ops
     for (auto &node : graph.node()) {
         auto op = std::make_shared<Op>(&node);
+        LOG(INFO) << "op: " << op->name << " type:" << op->type;
         // Input values
         for (auto &in : node.input()) {
             if (!Contains(nameToVal, in))
@@ -64,6 +70,99 @@ Graph::Graph(const onnx::ModelProto &model, const std::string &name) {
 
     // Connect vertices
     ConnectVerts();
+}
+
+Graph::Graph(const nlohmann::json &dag_json) {
+    // Create the graph from the json file
+    this->name = dag_json["name"].get<std::string>();
+
+    // Build name-value map
+    std::unordered_map<std::string, ValueRef> nameToVal;
+    
+    // Inputs
+    LOG(INFO) << "creating dummy graph inputs";
+    for (auto &tensor : dag_json["dummy_input_tensors"]) {
+        auto val = std::make_shared<Value>(
+            Value::CreateInput(tensor.get<std::string>(), 0));
+        auto in = std::make_shared<Input>(val);
+        val->input = in;
+        inputs.push_back(in);
+        nameToVal.insert({tensor.get<std::string>(), val});
+        LOG(INFO) << "graph input: " << val->name;
+    }
+    // Outputs
+    LOG(INFO) << "creating outputs";
+    for (auto &tensor : dag_json["graph_output_tensors"]) {
+        auto val = std::make_shared<Value>(
+            Value::CreateResult(
+                tensor.get<std::string>(), dag_json["tensor_sizes"][tensor].get<int>()));
+        outputs.push_back(std::make_shared<Output>(val));
+        nameToVal.insert({tensor.get<std::string>(), val});
+        LOG(INFO) << "graph output: " << val->name;
+    }
+
+    // Parameters
+    // Since HMCOS does not support scheduling with parameters, we don't create 
+    // the parameters
+
+    // Intermediates
+    LOG(INFO) << "creating tensors";
+    for (auto &tensor : dag_json["tensor_list"]) {
+        // skip the input and output tensors that have been added before
+        if (Contains(nameToVal, tensor.get<std::string>())) continue;
+        auto val = std::make_shared<Value>(
+            Value::CreateResult(
+                tensor.get<std::string>(), dag_json["tensor_sizes"][tensor].get<int>()));
+        nameToVal.insert({tensor.get<std::string>(), val});
+    }
+
+    LOG(INFO) << "creating ops";
+    // Build ops
+    for (auto &node : dag_json["dag"]) {
+        std::string node_type;
+        node_type = "unknown";
+        auto op = std::make_shared<Op>(
+            node["name"].get<std::string>(), node_type);
+
+        LOG(INFO) << "\t created ops.." << op->name;
+        // skip input nodes
+        if (node["input_nodes"].size() == 0) {
+            // add the dummy input tensors to these input tenosr nodes
+            std::string dummy_tensor = "dummy_" + node["name"].get<std::string>();
+            if (!Contains(nameToVal, dummy_tensor))
+                LOG(FATAL) << fmt::format(
+                    "Cannot find information of value {}.", dummy_tensor);
+            auto &inVal = nameToVal[dummy_tensor];
+            op->inputs.push_back(inVal);
+            inVal->uses.push_back(op);
+        } else{
+            // Input tensors
+            for (auto &in_tensor : node["input_tensors"]) {
+                if (!Contains(nameToVal, in_tensor.get<std::string>()))
+                    LOG(FATAL) << fmt::format(
+                        "Cannot find information of value {}.", in_tensor);
+                auto &inVal = nameToVal[in_tensor.get<std::string>()];
+                op->inputs.push_back(inVal);
+                inVal->uses.push_back(op);
+            }
+        }
+        
+        // Output tensors
+        for (auto &out_tensor : node["output_tensors"]) {
+            if (!Contains(nameToVal, out_tensor.get<std::string>()))
+                LOG(FATAL) << fmt::format(
+                    "Cannot find information of value {}.", out_tensor);
+            auto &outVal = nameToVal[out_tensor.get<std::string>()];
+            op->outputs.push_back(outVal);
+            outVal->def = op;
+        }
+        ops.push_back(op);
+    }
+
+    LOG(INFO) << "connecting vertices";
+    // Connect vertices
+    ConnectVerts();
+    
 }
 
 void Graph::ConnectVerts() {

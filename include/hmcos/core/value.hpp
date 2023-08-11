@@ -82,6 +82,9 @@ struct Value {
     static Value CreateParam(const onnx::TensorProto &tensor);
     static Value CreateResult(const onnx::ValueInfoProto &info);
 
+    static Value CreateInput(const std::string &name, int size);
+    static Value CreateResult(const std::string &name, int size);
+
     Value() = default;
 
     /// Clone from a value

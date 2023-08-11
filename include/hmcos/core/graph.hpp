@@ -4,6 +4,8 @@
 #include <hmcos/core/vertex.hpp>
 #include <hmcos/util/util.hpp>
 
+#include <nlohmann/json.hpp>
+
 namespace hmcos {
 
 enum class VertexKind {
@@ -59,6 +61,10 @@ struct Op : Vertex {
 
     Op(const Op &other) : name(other.name), type(other.type) {}
 
+    // add a new constructor for Op to define it from just a name and type
+    Op(const std::string &name, const std::string &type)
+        : name(name), type(type) {}
+
     static constexpr auto classKind = VertexKind::OP;
     VertexKind Kind() const override { return VertexKind::OP; }
 };
@@ -84,6 +90,9 @@ struct Graph {
     /// type-checked and their types are stored in `value_info` field of graph.
     /// Otherwise the constructor will panic.
     Graph(const onnx::ModelProto &model, const std::string &name = "");
+
+    /// Create a graph from a json file from MyDAG
+    Graph(const nlohmann::json &dag_json);
 
     /// Clone this graph.
     /// All vertices and values in this graph will be cloned, not

@@ -66,9 +66,17 @@ int main(int argc, char const *argv[]) {
     dag_ifs.close();
     Graph graph(dag_json);
 
+    // if user provide a budget, use the user-provided budget
+    // otherwise, use the default budget
+    static constexpr auto MAX_BUDGET = INT64_MAX / 2;
+    uint64_t budget = MAX_BUDGET;
+    if (argc >= 4) {
+        budget = std::stoull(argv[3]);
+    }
+
     // Schedule hierarchical graph
     std::vector<OpRef> sched;
-    TIME_CODE(sched = HierarchicalSchedule(graph);)
+    TIME_CODE(sched = HierarchicalSchedule(graph, budget);)
 
     // dump the result schedule to a json file
     std::string json_path = std::filesystem::path(argv[2]).string() + "/" + graph.name + ".json";

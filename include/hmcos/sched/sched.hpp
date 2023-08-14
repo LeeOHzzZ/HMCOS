@@ -17,6 +17,7 @@ std::vector<OpRef> ReversePostOrder(const Graph &graph);
 
 /// Use iterative hierarchical scheduling algorithm of HMCOS
 std::vector<OpRef> HierarchicalSchedule(const Graph &graph);
+std::vector<OpRef> HierarchicalSchedule(const Graph &graph, uint64_t budget);
 
 /// Serenity-style scheduling for networks with sequentially-connected cells
 std::vector<OpRef> SerenitySchedule(const Graph &graph, bool joinOps,

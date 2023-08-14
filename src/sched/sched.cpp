@@ -529,6 +529,10 @@ static bool tryUngroupSucc(const SequenceRef &seq) {
 static constexpr auto MAX_BUDGET = INT64_MAX / 2;
 
 std::vector<OpRef> HierarchicalSchedule(const Graph &graph) {
+    return HierarchicalSchedule(graph, MAX_BUDGET);
+}
+
+std::vector<OpRef> HierarchicalSchedule(const Graph &graph, uint64_t budget = MAX_BUDGET) {
     // Build hierarchical graph
     HierGraph hier(graph);
     RunPass<JoinSequencePass, MakeGroupPass>(hier);
@@ -538,7 +542,8 @@ std::vector<OpRef> HierarchicalSchedule(const Graph &graph) {
 
     // Record schedule and peak
     std::vector<OpRef> lastSched;
-    uint64_t lastPeak = MAX_BUDGET;
+    // uint64_t lastPeak = MAX_BUDGET;
+    uint64_t lastPeak = budget;
 
     // Iteratively schedule hierarchical graph
     while (true) {
